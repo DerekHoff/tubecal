@@ -141,8 +141,9 @@
             if (activeInput) {
                 activeInput.value += value;
             } else {
-                document.getElementById('radius').focus(); // Default to radius if no focus
-                document.getElementById('radius').value += value;
+                activeInput = document.getElementById('radius'); // Default to radius if no focus
+                activeInput.focus();
+                activeInput.value += value;
             }
         }
 
@@ -161,12 +162,16 @@
             if (inputStr.includes(' ')) { // Mixed number like '1 1/2'
                 const [whole, frac] = inputStr.split(' ');
                 const [num, denom] = frac.split('/').map(Number);
+                if (isNaN(num) || isNaN(denom) || denom === 0) throw new Error("Invalid fraction");
                 return parseInt(whole) + num / denom;
             } else if (inputStr.includes('/')) { // Simple fraction like '3/4'
-                const [num, denom] = frac.split('/').map(Number);
+                const [num, denom] = inputStr.split('/').map(Number);
+                if (isNaN(num) || isNaN(denom) || denom === 0) throw new Error("Invalid fraction");
                 return num / denom;
             } else { // Plain number like '2'
-                return parseFloat(inputStr);
+                const num = parseFloat(inputStr);
+                if (isNaN(num)) throw new Error("Invalid number");
+                return num;
             }
         }
 
@@ -192,23 +197,30 @@
             errorDiv.style.display = 'none';
 
             try {
-                const radiusStr = document.getElementById('radius').value;
-                const bendAngleStr = document.getElementById('bendAngle').value;
-                const spreadStr = document.getElementById('spread').value;
+                const radiusStr = document.getElementById('radius').value.trim();
+                const bendAngleStr = document.getElementById('bendAngle').value.trim();
+                const spreadStr = document.getElementById('spread').value.trim();
+
+                // Check for empty required fields
+                if (!radiusStr || !bendAngleStr) {
+                    errorDiv.textContent = "Error: Radius and Bend Angle are required.";
+                    errorDiv.style.display = 'block';
+                    return;
+                }
 
                 const radius = parseFraction(radiusStr);
-                const bendAngle = parseFloat(bendAngleStr);
+                const bendAngle = parseFraction(bendAngleStr); // Use parseFraction for consistency
                 const spread = parseFraction(spreadStr);
 
                 // Validation for required fields
-                if (radius <= 0 || bendAngle <= 0 || bendAngle > 180 || isNaN(radius) || isNaN(bendAngle)) {
+                if (radius <= 0 || bendAngle <= 0 || bendAngle > 180) {
                     errorDiv.textContent = "Error: Enter valid positive numbers for radius and bend angle (0-180°).";
                     errorDiv.style.display = 'block';
                     return;
                 }
 
                 // Spread validation (optional)
-                if (spread !== null && (spread <= 0 || isNaN(spread))) {
+                if (spread !== null && spread <= 0) {
                     errorDiv.textContent = "Error: If spread is provided, it must be a positive number.";
                     errorDiv.style.display = 'block';
                     return;
@@ -257,6 +269,7 @@
             } catch (e) {
                 errorDiv.textContent = "Error: Invalid input format. Use '1 1/2', '3/4', or '2'.";
                 errorDiv.style.display = 'block';
+                console.log("Error details:", e.message, { radius: document.getElementById('radius').value, bendAngle: document.getElementById('bendAngle').value, spread: document.getElementById('spread').value });
             }
         }
     </script>
