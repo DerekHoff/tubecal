@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tube Bend Calculator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        .input-group {
+            margin: 10px 0;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #555;
+        }
+        input {
+            width: 100%;
+            padding: 8px;
+            box-sizing: border-box;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        button {
+            width: 100%;
+            padding: 10px;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        #numpad {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 5px;
+            margin: 10px 0;
+        }
+        .numpad-btn {
+            padding: 15px;
+            background-color: #ddd;
+            border: 1px solid #bbb;
+            border-radius: 4px;
+            text-align: center;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .numpad-btn:hover {
+            background-color: #ccc;
+        }
+        #zero-btn {
+            grid-column: span 4; /* Span full width */
+            max-width: 25%; /* Limit width to match others */
+            margin: 0 auto; /* Center it */
+        }
+        #results {
+            margin-top: 20px;
+        }
+        .result-entry {
+            padding: 10px;
+            background-color: #fff;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-bottom: 10px;
+        }
+        .result-entry p {
+            margin: 5px 0;
+            color: #333;
+        }
+        .inputs {
+            font-weight: bold;
+            color: #007BFF;
+        }
+        .error {
+            color: red;
+            text-align: center;
+            margin-top: 10px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>Tube Bend Calculator</h1>
+    <div class="input-group">
+        <label for="radius">Bender Radius (e.g., '1 1/2' or '9/16' inches):</label>
+        <input type="text" id="radius" placeholder="Enter radius">
+    </div>
+    <div class="input-group">
+        <label for="bendAngle">Bend Angle (degrees, e.g., '90'):</label>
+        <input type="text" id="bendAngle" placeholder="Enter bend angle">
+    </div>
+    <div class="input-group">
+        <label for="spread">Spread (optional, e.g., '2 3/4' or '1' inches):</label>
+        <input type="text" id="spread" placeholder="Enter spread (optional)">
+    </div>
+    <button onclick="calculate()">Calculate</button>
+    <div id="numpad">
+        <div class="numpad-btn" onclick="addToInput('1')">1</div>
+        <div class="numpad-btn" onclick="addToInput('2')">2</div>
+        <div class="numpad-btn" onclick="addToInput('3')">3</div>
+        <div class="numpad-btn" onclick="addToInput('/')">/</div>
+        <div class="numpad-btn" onclick="addToInput('4')">4</div>
+        <div class="numpad-btn" onclick="addToInput('5')">5</div>
+        <div class="numpad-btn" onclick="addToInput('6')">6</div>
+        <div class="numpad-btn" onclick="addToInput(' ')">Space</div>
+        <div class="numpad-btn" onclick="addToInput('7')">7</div>
+        <div class="numpad-btn" onclick="addToInput('8')">8</div>
+        <div class="numpad-btn" onclick="addToInput('9')">9</div>
+        <div class="numpad-btn" onclick="backspace()">⌫</div>
+        <div class="numpad-btn" id="zero-btn" onclick="addToInput('0')">0</div>
+    </div>
+    <div id="results"></div>
+    <p id="error" class="error"></p>
+
+    <script>
+        let resultsHistory = []; // Array to store previous results
+        let activeInput = null; // Track which input is focused
+
+        // Set active input when clicked
+        document.querySelectorAll('input').forEach(input => {
+            input.addEventListener('focus', () => {
+                activeInput = input;
+            });
+        });
+
+        function addToInput(value) {
+            if (activeInput) {
+                activeInput.value += value;
+            } else {
+                activeInput = document.getElementById('radius'); // Default to radius if no focus
+                activeInput.focus();
+                activeInput.value += value;
+            }
+        }
+
+        function backspace() {
+            if (activeInput) {
+                activeInput.value = activeInput.value.slice(0, -1);
+            } else {
+                activeInput = document.getElementById('radius'); // Default to radius
+                activeInput.value = activeInput.value.slice(0, -1);
+            }
+        }
+
+        function parseFraction(inputStr) {
+            inputStr = inputStr.trim();
+            if (!inputStr) return null; // Return null for empty string
+            if (inputStr.includes(' ')) { // Mixed number like '1 1/2'
+                const [whole, frac] = inputStr.split(' ');
+                const [num, denom] = frac.split('/').map(Number);
+                if (isNaN(num) || isNaN(denom) || denom === 0) throw new Error("Invalid fraction");
+                return parseInt(whole) + num / denom;
+            } else if (inputStr.includes('/')) { // Simple fraction like '3/4'
+                const [num, denom] = inputStr.split('/').map(Number);
+                if (isNaN(num) || isNaN(denom) || denom === 0) throw new Error("Invalid fraction");
+                return num / denom;
+            } else { // Plain number like '2'
+                const num = parseFloat(inputStr);
+                if (isNaN(num)) throw new Error("Invalid number");
+                return num;
+            }
+        }
+
+        function gcd(a, b) {
+            return b === 0 ? a : gcd(b, a % b); // Greatest common divisor for simplification
+        }
+
+        function toSimplifiedFraction(decimal) {
+            const sixteenths = Math.round(decimal * 16); // Round to nearest 1/16th
+            if (sixteenths === 0) return "0";
+            const whole = Math.floor(sixteenths / 16);
+            let remainder = sixteenths % 16;
+            if (remainder === 0) return whole.toString();
+            const divisor = gcd(remainder, 16);
+            const num = remainder / divisor;
+            const denom = 16 / divisor;
+            return whole > 0 ? `${whole} ${num}/${denom}` : `${num}/${denom}`;
+        }
+
+        function calculate() {
+            const errorDiv = document.getElementById('error');
+            const resultsDiv = document.getElementById('results');
+            errorDiv.style.display = 'none';
+
+            try {
+                const radiusStr = document.getElementById('radius').value.trim();
+                const bendAngleStr = document.getElementById('bendAngle').value.trim();
+                const spreadStr = document.getElementById('spread').value.trim();
+
+                // Check for empty required fields
+                if (!radiusStr || !bendAngleStr) {
+                    errorDiv.textContent = "Error: Radius and Bend Angle are required.";
+                    errorDiv.style.display = 'block';
+                    return;
+                }
+
+                const radius = parseFraction(radiusStr);
+                const bendAngle = parseFraction(bendAngleStr); // Use parseFraction for consistency
+                const spread = parseFraction(spreadStr);
+
+                // Validation for required fields
+                if (radius <= 0 || bendAngle <= 0 || bendAngle > 180) {
+                    errorDiv.textContent = "Error: Enter valid positive numbers for radius and bend angle (0-180°).";
+                    errorDiv.style.display = 'block';
+                    return;
+                }
+
+                // Spread validation (optional)
+                if (spread !== null && spread <= 0) {
+                    errorDiv.textContent = "Error: If spread is provided, it must be a positive number.";
+                    errorDiv.style.display = 'block';
+                    return;
+                }
+
+                // Convert degrees to radians
+                const rad = bendAngle * Math.PI / 180;
+                const halfRad = rad / 2;
+
+                // Calculations
+                const advance = radius * Math.sin(1 * Math.PI / 180) * bendAngle;
+                const setback = Math.tan(halfRad) * radius;
+                const gain = setback * 2 - advance;
+                const offset = spread !== null ? Math.tan(halfRad) * spread : null;
+
+                // Create result object
+                const result = {
+                    radius: radiusStr,
+                    bendAngle: bendAngleStr,
+                    spread: spreadStr || "N/A",
+                    advance: toSimplifiedFraction(advance),
+                    setback: toSimplifiedFraction(setback),
+                    gain: toSimplifiedFraction(gain),
+                    offset: offset !== null ? toSimplifiedFraction(offset) : null
+                };
+
+                // Add to history (newest first)
+                resultsHistory.unshift(result);
+
+                // Build results HTML
+                let resultsHTML = '';
+                resultsHistory.forEach(res => {
+                    resultsHTML += `
+                        <div class="result-entry">
+                            <p class="inputs">Inputs: Radius = ${res.radius} in, Bend Angle = ${res.bendAngle}°, Spread = ${res.spread} in</p>
+                            <p>Advance: ${res.advance} inches</p>
+                            <p>Setback: ${res.setback} inches</p>
+                            <p>Gain: ${res.gain} inches</p>
+                            ${res.offset !== null ? `<p>Offset: ${res.offset} inches</p>` : ''}
+                        </div>
+                    `;
+                });
+
+                // Display results
+                resultsDiv.innerHTML = resultsHTML;
+            } catch (e) {
+                errorDiv.textContent = "Error: Invalid input format. Use '1 1/2', '3/4', or '2'.";
+                errorDiv.style.display = 'block';
+                console.log("Error details:", e.message, { radius: document.getElementById('radius').value, bendAngle: document.getElementById('bendAngle').value, spread: document.getElementById('spread').value });
+            }
+        }
+    </script>
+</body>
+</html>
